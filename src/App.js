@@ -3,6 +3,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 import imgTM from './assets/tm.png';
 import * as Bootstrap from 'react-bootstrap';
+import Switch from "react-switch";
+
 import { useState, useEffect } from "react";
 
 function App() {
@@ -14,6 +16,7 @@ function App() {
 	const [phoneNoEnd, setPhoneNoEnd] = useState('');
 	const [password, setPassword] = useState('');
 	const [processRegister, setProcessRegister] = useState(false);
+	const [isLoading, setLoading] = useState(false);
 
 	const buildPhoneNo = () => "010" + phoneNoMiddle.toString() + phoneNoEnd.toString();
 	const buildFormData = () => { 
@@ -28,9 +31,12 @@ function App() {
 		return formData; 
 	};
 	const handleLoginBtn = () => {
+		setLoading(true);
+
 		let formData = buildFormData();
 		fetch("/api/" + buildPhoneNo(), {method: 'POST', body: formData}).then((resp) => resp.json()).then((json) => {
 			setLoginInfo(json);
+			setLoading(false);
 
 			if (json.result === false) { alert(json.msg); return; }
 		});
@@ -65,7 +71,9 @@ function App() {
 					</Bootstrap.Container>
 				</Bootstrap.Form>
 				<div style={{padding: '16px'}}>
-					{loginInfo.result == false && <Bootstrap.Alert variant="danger">{ loginInfo.msg.split('\n').map(line => { return (<span>{line}<br /></span>)}) }</Bootstrap.Alert> }
+					{isLoading && <Bootstrap.Spinner animation="border" role="status"><span className="sr-only">로딩중...</span></Bootstrap.Spinner>}
+					{loginInfo.result === false && isLoading == false && <Bootstrap.Alert variant="danger">{ loginInfo.msg.split('\n').map(line => { return (<span>{line}<br /></span>)}) }</Bootstrap.Alert> }
+					{loginInfo.result === true && isLoading == false && <UpdateDetailForm loginInfo={loginInfo} formData={buildFormData()} /> }
 				</div>
 				{processRegister && <RegisterForm handleClose={() => setProcessRegister(false)} formData={buildFormData()} /> }
 			</div>
@@ -100,6 +108,33 @@ const RegisterForm = (props) => {
 				<Bootstrap.Button variant="primary" onClick={submit}>저장(심사 요청)</Bootstrap.Button>
 			</Bootstrap.Modal.Footer>
 		</Bootstrap.Modal>
+	);
+}
+
+const UpdateDetailForm = (props) => {
+	const { loginInfo, formData } = props;
+	const [isNotifyEnabled, setNotifiyEnable] = useState(loginInfo.enabled);
+
+	const handleSubmit = () => {
+		formData.delete('enabled');
+		formData.append('enabled', isNotifyEnabled ? 'Y': 'N');
+		
+		fetch("/api/" + formData.get('phoneNo') + "/update", {method: 'POST', body: formData}).then((resp) => resp.json()).then((json) => {
+			alert(json.msg);
+		});
+	}
+
+	return (
+		<div>
+			<hr style={{marginTop:0}} />
+			<h3>상세 설정</h3>
+			<label>
+				<Switch onChange={(c) => setNotifiyEnable(c)} checked={isNotifyEnabled} />
+				<span style={{position: 'relative', top: '-8px', left: '4px'}}> SMS 알람의 수신여부를 지정합니다.</span>
+			</label>
+			<br /><br /><br />
+			<Bootstrap.Button variant="primary" onClick={handleSubmit}>저장</Bootstrap.Button>
+		</div>
 	);
 }
 

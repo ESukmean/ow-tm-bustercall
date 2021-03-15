@@ -8,6 +8,7 @@ body {
 .main-card {
   border-radius: 5px;
   width: 420px;
+  max-width: 90vw;
   min-height: 60vh;
   box-shadow: 0 0 4px black;
   margin: 0 auto;

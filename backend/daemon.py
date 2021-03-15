@@ -9,7 +9,7 @@ def getMongo():
 	return MongoClient('mongodb://%s:%s@127.0.0.1' % (config.mongo['user'], config.mongo['pw']))['ow-buster']
 
 def notify():
-	def sendSMS(toList, msg):
+	def sendSMS_coolsms(toList, msg):
 		import sys
 		from sdk.api.message import Message
 		from sdk.exceptions import CoolsmsException
@@ -34,7 +34,55 @@ def notify():
 			print("Error Code : %s" % e.code)
 			print("Error Message : %s" % e.msg)
 
-		
+	def sendSMS_ncloud(toList, msg):
+		def	make_signature(uri):
+			import sys
+			import os
+			import hashlib
+			import hmac
+			import base64
+			import requests
+			import time
+
+
+			timestamp = int(time.time() * 1000)
+			timestamp = str(timestamp)
+
+			access_key = config.ncloud['accesskey']			# access key id (from portal or Sub Account)
+			secret_key = config.ncloud['secretkey']			# secret key (from portal or Sub Account)
+			secret_key = bytes(secret_key, 'UTF-8')
+
+			method = "POST"
+
+			message = method + " " + uri + "\n" + timestamp + "\n" + access_key
+			message = bytes(message, 'UTF-8')
+			signingKey = base64.b64encode(hmac.new(secret_key, message, digestmod=hashlib.sha256).digest())
+			return {
+				'x-ncp-apigw-timestamp': timestamp,
+				'x-ncp-iam-access-key': access_key,
+				'x-ncp-apigw-signature-v2': signingKey,
+				'Content-type': 'application/json'
+			}
+
+		import requests
+		req_body = {
+			"type": "SMS",
+			"contentType": "COMM",
+			"countryCode": "82",
+			"from": "01098000336",
+			"content": msg,
+			"messages": list(map(lambda num: {'to': num}, toList)),
+		}
+
+		import requests, json 
+		uri = "/sms/v2/services/{}/messages".format(config.ncloud['serviceid'])
+		header = make_signature(uri)
+		try:
+			if requests.post('https://sens.apigw.ntruss.com' + uri, headers=header, data=json.dumps(req_body)).status_code != 202:
+				return sendSMS_coolsms(toList, msg) #정상 처리가 안되면 coolsms 백업 사용	
+		except:
+			return sendSMS_coolsms(toList, msg) #오류 발생시 coolsms 백업 사용
+
 	def getSendList():
 		client = getMongo()
 		result = client.smsList.find({'enabled': True})
@@ -43,7 +91,7 @@ def notify():
 
 
 	to = getSendList()
-	sendSMS(to, "[ESukmeans] 오버워치 난장판 모드가 활성화 되었습니다.\n문의: ESukmean#3630")
+	sendSMS_ncloud(to, "[ESukmeans] 오버워치 난장판 모드가 활성화 되었습니다.\n문의: ESukmean#3630")
 	
 def checkOWAcade():
 	try:
@@ -76,6 +124,8 @@ isTM = None
 
 
 while True:
+	time.sleep(10)
+
 	resp = checkOWAcade()
 	if resp is False:
 		time.sleep(30)
