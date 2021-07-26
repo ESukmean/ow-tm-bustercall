@@ -35,7 +35,7 @@ def notify():
 			print("Error Message : %s" % e.msg)
 
 	def sendSMS_ncloud(toList, msg):
-		def	make_signature(uri):
+		def make_signature(uri):
 			import sys
 			import os
 			import hashlib
@@ -95,8 +95,7 @@ def notify():
 	
 def checkOWAcade():
 	try:
-		resp = requests.get('https://overwatcharcade.today/api/overwatch/today')
-
+		resp = requests.get('https://overwatcharcade.today/api/v1/overwatch/today')
 		if resp.ok is False:
 			return False
 
@@ -107,10 +106,14 @@ def checkOWAcade():
 		return False
 
 def containTM(apiJson):
+	if 'data' not in apiJson:
+		return False
+
+	apiJson = apiJson['data']
 	if 'modes' not in apiJson:
 		return False
 
-	return 'Total Mayhem' in map(lambda x: x['name'], apiJson['modes'].values())
+	return 'Total Mayhem' in map(lambda x: x['name'], apiJson['modes'])
 	# return 'No Limits' in map(lambda x: x['name'], apiJson['modes'].values())
 
 def isUpdatedToday(apiJson):
@@ -147,7 +150,7 @@ while True:
 			notify()
 		
 		if accurate < 2:
-			time.sleep(15) # 아직 레벨3단계 까지는 가지 않은 상태. (검증 필요상태)
+			time.sleep(10) # 아직 레벨3단계 까지는 가지 않은 상태. (검증 필요상태)
 
 		else:
 			time.sleep(900 * accurate) # 2단계시 30분, 3단계시 45분
